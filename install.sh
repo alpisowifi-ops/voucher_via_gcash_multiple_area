@@ -18,7 +18,7 @@ mkdir -p ~/htdocs
 
 echo "📥 Cloning project..."
 rm -rf ~/htdocs
-git clone https://github.com/alpisowifi-ops/voucher_via_gcash.git ~/htdocs
+git clone https://github.com/alpisowifi-ops/voucher_via_gcash_multiple_area.git ~/htdocs
 
 cd ~/htdocs
 
