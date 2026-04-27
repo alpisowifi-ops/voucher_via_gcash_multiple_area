@@ -1,52 +1,55 @@
 <?php
 date_default_timezone_set("Asia/Manila");
 
-// GET AMOUNT
-$amount = $_GET['amount'] ?? 0;
-if(!$amount){
+// ================= SAFE FUNCTION =================
+function load_json($file){
+    if(!file_exists($file)){
+        file_put_contents($file, json_encode([], JSON_PRETTY_PRINT));
+    }
+    $data = json_decode(file_get_contents($file), true);
+    return is_array($data) ? $data : [];
+}
+
+// ================= GET AMOUNT =================
+$amount = isset($_GET['amount']) ? intval($_GET['amount']) : 0;
+if($amount <= 0){
     die("Invalid amount");
 }
 
-// LOAD CONFIG
-$config = json_decode(file_get_contents("config1.json"), true);
+// ================= LOAD CONFIG =================
+$config = load_json("config1.json");
+$qr = isset($config['qr']) ? $config['qr'] : "qr.jpg";
 
-// TOKENS FILE
+// ================= TOKENS =================
 $tokens_file = "tokens1.json";
+$tokens = load_json($tokens_file);
 
-// CREATE FILE IF NOT EXISTS
-if(!file_exists($tokens_file)){
-    file_put_contents($tokens_file, json_encode([], JSON_PRETTY_PRINT));
-}
-
-$tokens = json_decode(file_get_contents($tokens_file), true);
-if(!is_array($tokens)) $tokens = [];
-
-// 🔥 AUTO CLEAN OLD TOKENS (EXPIRE 3 MINUTES)
+// CLEAN OLD TOKENS (3 mins)
 $now = time();
 foreach($tokens as $t => $info){
-    if(($now - $info['time']) > 180){
+    if(isset($info['time']) && ($now - $info['time']) > 180){
         unset($tokens[$t]);
     }
 }
 
-// 🔐 GENERATE SECURE TOKEN
+// ================= GENERATE TOKEN =================
 $token = bin2hex(random_bytes(5));
 
-// 🌐 GET USER IP
+// GET IP
 $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
 // SAVE TOKEN
 $tokens[$token] = [
-    "amount" => intval($amount),
+    "amount" => $amount,
     "status" => "pending",
     "time" => time(),
     "ip" => $ip
 ];
 
-// SAVE FILE
+// SAVE TOKENS
 file_put_contents($tokens_file, json_encode($tokens, JSON_PRETTY_PRINT));
-?>
 
+?>
 <!DOCTYPE html>
 <html>
 <head>
@@ -102,9 +105,11 @@ img {
 <div class="box">
     <h3>📷 Scan QR to Pay</h3>
 
-    <img src="<?= $config['qr1'] ?>"><br><br>
+    <!-- SAFE QR DISPLAY -->
+    <img src="<?= htmlspecialchars($qr) ?>" onerror="this.src='qr.jpg'"><br><br>
 
-    <a href="<?= $config['qr1'] ?>" download>
+    <!-- DOWNLOAD -->
+    <a href="<?= htmlspecialchars($qr) ?>" download>
         <button class="btn-download">⬇ Download QR</button>
     </a>
 
@@ -117,7 +122,7 @@ img {
 
 <script>
 
-// ⏳ TIMER (3 MINUTES)
+// TIMER 3 MINUTES
 let start = Math.floor(Date.now()/1000);
 let duration = 180;
 
@@ -144,7 +149,7 @@ let timer = setInterval(() => {
 },1000);
 
 
-// 👉 REDIRECT TO WAIT PAGE WITH TOKEN
+// REDIRECT TO WAIT PAGE
 function paidClick(){
     window.location.href = "wait1.php?token=<?= $token ?>";
 }
